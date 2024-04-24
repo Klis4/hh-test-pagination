@@ -3,6 +3,7 @@ import {Inter} from "next/font/google";
 import Table from "react-bootstrap/Table";
 import {Alert, Container} from "react-bootstrap";
 import {GetServerSideProps, GetServerSidePropsContext} from "next";
+import Pagination from "@/components/pagination/pagination";
 
 const inter = Inter({subsets: ["latin"]});
 
@@ -17,27 +18,36 @@ type TUserItem = {
 
 type TGetServerSideProps = {
   statusCode: number
+  page: number,
+  perPage: number,
+  totalPages: number,
   users: TUserItem[]
 }
 
 
 export const getServerSideProps = (async (ctx: GetServerSidePropsContext): Promise<{ props: TGetServerSideProps }> => {
   try {
-    const res = await fetch("http://localhost:3000/users", {method: 'GET'})
+    const { query } = ctx;
+    const page = query.page || 1;
+    const perPage = query.perPage || 20;
+ 
+    const res = await fetch(`http://localhost:3000/users?page=${page}&perPage=${perPage}`, {method: 'GET'})
     if (!res.ok) {
-      return {props: {statusCode: res.status, users: []}}
+      return {props: {statusCode: res.status, page: 0, perPage: 0, totalPages: 0, users: []}}
     }
 
+    const response = await res.json();
+
     return {
-      props: {statusCode: 200, users: await res.json()}
+      props: {statusCode: 200, page: response.page, perPage: response.perPage, totalPages: response.totalPages, users: response.users}
     }
   } catch (e) {
-    return {props: {statusCode: 500, users: []}}
+    return {props: {statusCode: 500, page: 0, perPage: 0, totalPages: 0, users: []}}
   }
 }) satisfies GetServerSideProps<TGetServerSideProps>
 
 
-export default function Home({statusCode, users}: TGetServerSideProps) {
+export default function Home({statusCode, page, perPage, totalPages, users}: TGetServerSideProps) {
   if (statusCode !== 200) {
     return <Alert variant={'danger'}>Ошибка {statusCode} при загрузке данных</Alert>
   }
@@ -81,9 +91,7 @@ export default function Home({statusCode, users}: TGetServerSideProps) {
             }
             </tbody>
           </Table>
-
-          {/*TODO add pagination*/}
-
+          <Pagination page={page} perPage={perPage} totalPages={totalPages}/>
         </Container>
       </main>
     </>
